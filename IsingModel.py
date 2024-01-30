@@ -14,82 +14,83 @@ class IsingModel(object):
                 else:
                     self.arr[i][j] = 1
         self.temp = temp  # set temperature
-        self.indi = np.zeros(shape=(2, 2))  # generating initial coordinate indices
+        pt = np.zeros(shape=(2, 2))  # generating empty initial coordinate indices
+        self.pt_r = np.zeros(shape=(2, 1))
+        self.pt_l = np.zeros(shape=(2, 1))
+        self.pt_u = np.zeros(shape=(2, 1))
+        self.pt_d = np.zeros(shape=(2, 1))  # make empty array of neighbour around two random points.
+        for i in range(2):  # loop two times to find two random coordinates
+            pt[i][0] = int(np.random.random() * self.size)  # generate random y coordinate of ith point
+            pt[i][1] = int(np.random.random() * self.size)  # generate random x coordinate of ith point
+        self.indi = pt  # generating initial coordinate indices
+        for i in range(2):
+            if int(self.indi[i][1]) + 1 > self.size - 1:  # set up boundary condition for right neighbour
+                self.pt_r[i] = self.arr[int(self.indi[i][0])][self.size % (int(self.indi[i][1]) + 1)]
+            else:
+                self.pt_r[i] = self.arr[int(self.indi[i][0])][int(self.indi[i][1]) + 1]  # choose spin on right of point
 
-    def glauber_dyn(self):
+            if int(self.indi[i][1]) - 1 < 0:
+                self.pt_l[i] = self.arr[int(self.indi[i][0])][self.size + (int(self.indi[i][1]) - 1)]
+            else:
+                self.pt_l[i] = self.arr[int(self.indi[i][0])][int(self.indi[i][1])-1]  # choose left
+
+            if int(self.indi[i][0]) - 1 < 0:  # set up boundary condition for up neighbour
+                self.pt_u[i] = self.arr[self.size + (int(self.indi[i][0])-1)][int(self.indi[i][1])]
+            else:
+                self.pt_u[i] = self.arr[int(self.indi[i][0]) - 1][int(self.indi[i][1])]  # up
+
+            if int(self.indi[i][0]) + 1 > self.size - 1:  # set up boundary condition for down neighbour
+                self.pt_d[i] = self.arr[self.size % (int(self.indi[i][0]) + 1)][int(self.indi[i][1])]
+            else:
+                self.pt_d[i] = self.arr[int(self.indi[i][0]) + 1][int(self.indi[i][1])]  # down
+        self.DE = np.zeros(shape=(2, 1))  # initialize empty array of Energy difference
+        self.prob = np.zeros(shape=(2, 1))  # initialize empty array of probability
+
+    def glauber_dyn(self, kawa):
         array = self.arr  # load the array generated initially
-        # indi = np.zeros(2)   generating initial coordinate indices
-        indi = self.indi
-        indi[0][0] = int(np.random.random() * self.size)  # generate random y coordinate
-        indi[0][1] = int(np.random.random() * self.size)  # generate random x coordinate
-        mu_point = array[int(indi[0][0])][int(indi[0][1])]  # point out the random coordinate on array
-        nu_point = 0  # empty variable for flipped spin point
-        if mu_point < 0:  # attempt to update the spin on pointer
-            nu_point = mu_point * -1  # flips the spin if spin is -1
+        indi = self.indi  # load the random coordinates generated initially
+        r, l, u, d = self.pt_r, self.pt_l, self.pt_u, self.pt_d  # load neighbour coordinates of each random coords.
+        if kawa == 1:
+            for i in range(2):
+                mu_pt = array[indi[i][0]][indi[i][1]]  # take value out i th random coordinate on array
+                nu_pt = 0  # empty variable for flipped spin point
+                if mu_pt < 0:  # attempt to update the spin of i th coordinate.
+                    nu_pt = mu_pt * -1  # flips the spin if spin is -1
+                else:
+                    nu_pt = mu_pt * -1  # flips the spin if spin is +1
+                sum_neighbour = int(r[i]+l[i]+u[i]+d[i])  # sum of all neighbour spins
+                mu_E = int(mu_pt) * sum_neighbour  # sum of energy of mu states
+                nu_E = int(nu_pt) * sum_neighbour  # sum of energy of nu states
+                self.DE[i] = mu_E - nu_E  # difference of energy
+                self.prob[i] = min(1, np.exp(-int(self.DE[i])/self.temp))  # Metropolis algorithm of probability
         else:
-            nu_point = mu_point * -1  # flips the spin if spin is +1
-
-        if int(indi[0][1]) + 1 > self.size - 1:  # set up boundary condition for right neighbour
-            pt_r = array[int(indi[0][0])][self.size % (int(indi[0][1]) + 1)]  # roll the overflowing pt and choose right spin
-        else:
-            pt_r = array[int(indi[0][0])][int(indi[0][1]) + 1]  # choose spin on right of point
-
-        if int(indi[0][1]) - 1 < 0:
-            pt_l = array[int(indi[0][0])][self.size + (int(indi[0][1]) - 1)]  # set up boundary condition for left neighbour
-        else:
-            pt_l = array[int(indi[0][0])][int(indi[0][1])-1]  # choose left
-
-        if int(indi[0][0]) - 1 < 0:  # set up boundary condition for up neighbour
-            pt_u = array[self.size + (int(indi[0][0])-1)][int(indi[0][1])]
-        else:
-            pt_u = array[int(indi[0][0]) - 1][int(indi[0][1])]  # up
-
-        if int(indi[0][0]) + 1 > self.size - 1:  # set up boundary condition for down neighbour
-            pt_d = array[self.size % (int(indi[0][0]) + 1)][int(indi[0][1])]
-        else:
-            pt_d = array[int(indi[0][0]) + 1][int(indi[0][1])]  # down
-
-        sum_neighbour = int(pt_u + pt_d + pt_r + pt_l)  # sum of all energy of neighbour
-        mu_E = int(mu_point) * sum_neighbour  # sum of energy of initial state (mu)
-        nu_E = int(nu_point) * sum_neighbour  # sum of energy of flipped state (nu)
-        self.DE = int(nu_E) - int(mu_E)  # difference of energy
-        self.prob = min(1, np.exp(-self.DE/self.temp))  # Metropolis algorithm of probability
-
-
+            i = 0
+            mu_pt = array[indi[i][0]][indi[i][1]]  # take value out i th random coordinate on array
+            nu_pt = 0  # empty variable for flipped spin point
+            if mu_pt < 0:  # attempt to update the spin of i th coordinate.
+                nu_pt = mu_pt * -1  # flips the spin if spin is -1
+            else:
+                nu_pt = mu_pt * -1  # flips the spin if spin is +1
+            sum_neighbour = int(r[i] + l[i] + u[i] + d[i])  # sum of all neighbour spins
+            mu_E = int(mu_pt) * sum_neighbour  # sum of energy of mu states
+            nu_E = int(nu_pt) * sum_neighbour  # sum of energy of nu states
+            self.DE_Glaub = int(nu_E) - int(mu_E)  # difference of energy
+            self.prob_Glaub = min(1, np.exp(-int(self.DE_Glaub)/self.temp))  # Metropolis algorithm of probability
 
     def kawasaki_dyn(self):
         array = self.arr  # load the array generated initially
-        indi = np.zeros(shape=(2, 2))  # generating initial coordinate indices
-        for i in range(2):  # loop two times to find two random coordinates
-            indi[i][0] = int(np.random.random() * self.size)  # generate random y coordinate of ith point
-            indi[i][1] = int(np.random.random() * self.size)  # generate random x coordinate of ith point
+        indi = self.indi
+        two_pts = np.array([array[int(indi[0][0])][int(indi[0][1])], array[int(indi[1][0])][int(indi[1][1])]])
+        # point out the values of two spins on each random coordinate.
+        self.glauber_dyn(1)  # call method 'glauber_dyn' and set parameter kawa==1 because it is used in kawasaki
+        de_i = int(self.DE[0])  # DE of point i
+        de_j = int(self.DE[1])  # DE of point j
+        de_corr = int(two_pts[0]) * int(two_pts[1])  # correction DE of when i and j is the nearest neighbour.
+        self.DE_kawa = de_i + de_j + de_corr  # sum of all DEs.
+        self.prob_kawa = min(1, np.exp(-int(self.DE_kawa)/self.temp))  # Metropolis algorithm of probability
 
-        points = np.array([array[int(indi[0][0])][int(indi[0][1])], array[int(indi[1][0])][int(indi[1][1])]])
-        # point out the spins on each random coordinate.
-        pt_r = np.zeros(shape=(2, 1))
-        pt_l = np.zeros(shape=(2, 1))
-        pt_u = np.zeros(shape=(2, 1))
-        pt_d = np.zeros(shape=(2, 1))  # make empty array of neighbour around two random points.
-        for i in range(2):
-            if int(indi[i][1]) + 1 > self.size - 1:  # set up boundary condition for right neighbour
-                pt_r[i] = array[int(indi[i][0])][self.size % (int(indi[i][1]) + 1)]
-            else:
-                pt_r[i] = array[int(indi[i][0])][int(indi[i][1]) + 1]  # choose spin on right of point
 
-            if int(indi[i][1]) - 1 < 0:
-                pt_l[i] = array[int(indi[i][0])][self.size + (int(indi[i][1]) - 1)]
-            else:
-                pt_l[i] = array[int(indi[i][0])][int(indi[i][1])-1]  # choose left
 
-            if int(indi[i][0]) - 1 < 0:  # set up boundary condition for up neighbour
-                pt_u[i] = array[self.size + (int(indi[i][0])-1)][int(indi[i][1])]
-            else:
-                pt_u[i] = array[int(indi[i][0]) - 1][int(indi[i][1])]  # up
-
-            if int(indi[i][0]) + 1 > self.size - 1:  # set up boundary condition for down neighbour
-                pt_d[i] = array[self.size % (int(indi[i][0]) + 1)][int(indi[i][1])]
-            else:
-                pt_d[i] = array[int(indi[i][0]) + 1][int(indi[i][1])]  # down
 
 
 
@@ -101,5 +102,5 @@ class IsingModel(object):
 
 
 def main():
-    model = IsingModel()
+    model = IsingModel(10,1)
 
