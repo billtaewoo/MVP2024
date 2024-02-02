@@ -1,106 +1,125 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import numpy.random
 
 
 class IsingModel(object):
-    def __init__(self, size, temp):
-        self.size = size  # set size
-        self.arr = np.zeros(shape=(size, size))  # set up the empty array
-        for i in range(size):  # fill the array with -1 or 1 spin values
-            for j in range(size):
-                if np.random.random() < 0.5:
-                    self.arr[i][j] = -1
-                else:
-                    self.arr[i][j] = 1
+    def __init__(self, size, temp, model):
         self.temp = temp  # set temperature
-        pt = np.zeros(shape=(2, 2))  # generating empty initial coordinate indices
-        self.pt_r = np.zeros(shape=(2, 1))
-        self.pt_l = np.zeros(shape=(2, 1))
-        self.pt_u = np.zeros(shape=(2, 1))
-        self.pt_d = np.zeros(shape=(2, 1))  # make empty array of neighbour around two random points.
-        for i in range(2):  # loop two times to find two random coordinates
-            pt[i][0] = int(np.random.random() * self.size)  # generate random y coordinate of ith point
-            pt[i][1] = int(np.random.random() * self.size)  # generate random x coordinate of ith point
+        self.size = size  # set size
+        self.model = model  # input value model
+        self.arr = self.initialize_array()  # initialize the random array
+
+        pt = np.zeros(shape=(2, 2), dtype=int)  # generating empty initial coordinate indices
+        while self.arr[pt[0][0]][pt[0][1]] != self.arr[pt[1][0]][pt[1][1]]:
+            for i in range(2):
+                pt[i][0] = int(np.random.random() * self.size)  # generate random y coordinate of ith point
+                pt[i][1] = int(np.random.random() * self.size)  # generate random x coordinate of ith point
+                # Apply periodic boundary conditions
+                pt[i][0] = pt[i][0] % self.size
+                pt[i][1] = pt[i][1] % self.size
         self.indi = pt  # generating initial coordinate indices
+        '''set the neighbour points of two coordinates'''
+        self.right = np.zeros(shape=(2, 1))
+        self.left = np.zeros(shape=(2, 1))
+        self.up = np.zeros(shape=(2, 1))
+        self.down = np.zeros(shape=(2, 1))  # make empty array of neighbour around two random points.
         for i in range(2):
-            if int(self.indi[i][1]) + 1 > self.size - 1:  # set up boundary condition for right neighbour
-                self.pt_r[i] = self.arr[int(self.indi[i][0])][self.size % (int(self.indi[i][1]) + 1)]
-            else:
-                self.pt_r[i] = self.arr[int(self.indi[i][0])][int(self.indi[i][1]) + 1]  # choose spin on right of point
+            right_coord = self.apply_periodic_boundary(int(pt[i][1]) + 1)
+            left_coord = self.apply_periodic_boundary(int(pt[i][1]) - 1)
+            up_coord = self.apply_periodic_boundary(int(pt[i][0]) - 1)
+            down_coord = self.apply_periodic_boundary(int(pt[i][0]) + 1)
 
-            if int(self.indi[i][1]) - 1 < 0:
-                self.pt_l[i] = self.arr[int(self.indi[i][0])][self.size + (int(self.indi[i][1]) - 1)]
-            else:
-                self.pt_l[i] = self.arr[int(self.indi[i][0])][int(self.indi[i][1])-1]  # choose left
+            self.right[i] = self.arr[int(pt[i][0])][right_coord]
+            self.left[i] = self.arr[int(pt[i][0])][left_coord]
+            self.up[i] = self.arr[up_coord][int(pt[i][1])]
+            self.down[i] = self.arr[down_coord][int(pt[i][1])]
+        '''coordinates of neighbours : left, right, up, down'''
+    def initialize_array(self):
+        arr = np.random.choice([-1, 1], size=(self.size, self.size))
+        return arr
 
-            if int(self.indi[i][0]) - 1 < 0:  # set up boundary condition for up neighbour
-                self.pt_u[i] = self.arr[self.size + (int(self.indi[i][0])-1)][int(self.indi[i][1])]
-            else:
-                self.pt_u[i] = self.arr[int(self.indi[i][0]) - 1][int(self.indi[i][1])]  # up
+    def apply_periodic_boundary(self, coord):
+        return coord % self.size
 
-            if int(self.indi[i][0]) + 1 > self.size - 1:  # set up boundary condition for down neighbour
-                self.pt_d[i] = self.arr[self.size % (int(self.indi[i][0]) + 1)][int(self.indi[i][1])]
-            else:
-                self.pt_d[i] = self.arr[int(self.indi[i][0]) + 1][int(self.indi[i][1])]  # down
-        self.DE = np.zeros(shape=(2, 1))  # initialize empty array of Energy difference
-        self.prob = np.zeros(shape=(2, 1))  # initialize empty array of probability
-
-    def glauber_dyn(self, kawa):
+    def glauber(self):
         array = self.arr  # load the array generated initially
         indi = self.indi  # load the random coordinates generated initially
-        r, l, u, d = self.pt_r, self.pt_l, self.pt_u, self.pt_d  # load neighbour coordinates of each random coords.
-        if kawa == 1:
-            for i in range(2):
-                mu_pt = array[indi[i][0]][indi[i][1]]  # take value out i th random coordinate on array
-                nu_pt = 0  # empty variable for flipped spin point
-                if mu_pt < 0:  # attempt to update the spin of i th coordinate.
-                    nu_pt = mu_pt * -1  # flips the spin if spin is -1
-                else:
-                    nu_pt = mu_pt * -1  # flips the spin if spin is +1
-                sum_neighbour = int(r[i]+l[i]+u[i]+d[i])  # sum of all neighbour spins
-                mu_E = int(mu_pt) * sum_neighbour  # sum of energy of mu states
-                nu_E = int(nu_pt) * sum_neighbour  # sum of energy of nu states
-                self.DE[i] = mu_E - nu_E  # difference of energy
-                self.prob[i] = min(1, np.exp(-int(self.DE[i])/self.temp))  # Metropolis algorithm of probability
+        state_right = int(self.right[0][0])
+        state_left = int(self.left[0][0])
+        state_up = int(self.up[0][0])
+        state_down = int(self.down[0][0])  # states of neighbours
+        state_mu = int(array[indi[0][0]][indi[0][1]])  # take value out i th random coordinate on array
+        state_nu = 0  # empty variable for flipped spin point
+        state_nu = state_mu * -1  # flip the point
+        sum_neighbour = -1 * int(state_right + state_left + state_up + state_down)  # sum of all neighbour spins
+        energy_mu = state_mu * sum_neighbour  # sum of energy of mu states
+        energy_nu = state_nu * sum_neighbour  # sum of energy of nu states
+        diff_g = int(energy_nu - energy_mu)  # difference of energy
+        prob_g = min(1, np.exp(-diff_g/self.temp))  # Metropolis algorithm of probability
+        if prob_g == 1:
+            array[indi[0][0]][indi[0][1]] = state_nu  # changed
         else:
-            i = 0
-            mu_pt = array[indi[i][0]][indi[i][1]]  # take value out i th random coordinate on array
-            nu_pt = 0  # empty variable for flipped spin point
-            if mu_pt < 0:  # attempt to update the spin of i th coordinate.
-                nu_pt = mu_pt * -1  # flips the spin if spin is -1
+            if np.random.random() <= prob_g:
+                array[indi[0][0]][indi[0][1]] = state_nu  # changed
             else:
-                nu_pt = mu_pt * -1  # flips the spin if spin is +1
-            sum_neighbour = int(r[i] + l[i] + u[i] + d[i])  # sum of all neighbour spins
-            mu_E = int(mu_pt) * sum_neighbour  # sum of energy of mu states
-            nu_E = int(nu_pt) * sum_neighbour  # sum of energy of nu states
-            self.DE_Glaub = int(nu_E) - int(mu_E)  # difference of energy
-            self.prob_Glaub = min(1, np.exp(-int(self.DE_Glaub)/self.temp))  # Metropolis algorithm of probability
+                array[indi[0][0]][indi[0][1]] = state_mu  # unchanged
+        print(array)
 
-    def kawasaki_dyn(self):
+    def kawasaki(self):
         array = self.arr  # load the array generated initially
-        indi = self.indi
-        two_pts = np.array([array[int(indi[0][0])][int(indi[0][1])], array[int(indi[1][0])][int(indi[1][1])]])
-        # point out the values of two spins on each random coordinate.
-        self.glauber_dyn(1)  # call method 'glauber_dyn' and set parameter kawa==1 because it is used in kawasaki
-        de_i = int(self.DE[0])  # DE of point i
-        de_j = int(self.DE[1])  # DE of point j
-        de_corr = int(two_pts[0]) * int(two_pts[1])  # correction DE of when i and j is the nearest neighbour.
-        self.DE_kawa = de_i + de_j + de_corr  # sum of all DEs.
-        self.prob_kawa = min(1, np.exp(-int(self.DE_kawa)/self.temp))  # Metropolis algorithm of probability
+        indi = self.indi  # load the random coordinates generated initially
+        pre_energy = np.zeros(shape=(2, 1))
+        after_energy = np.zeros(shape=(2, 1))
+        for i in range(2):
+            state_n = int(array[indi[i][0]][indi[i][1]])
+            sum_neighbour = -1 * (int(self.right[i][0]) + int(self.left[i][0]) + int(self.up[i][0]) + int(self.down[i][0]))
+            pre_energy[i] = sum_neighbour * state_n  # store pre energy of each points
+        for i in range(2):
+            state_n = int(array[indi[i][0]][indi[i][1]])
+            new_state_n = state_n * -1  # flips the spin if spin is -1
+            sum_neighbour = -1 * (int(self.right[i][0]) + int(self.left[i][0]) + int(self.up[i][0]) + int(self.down[i][0]))
+            after_energy[i] = sum_neighbour * new_state_n  # store energy after change
+        indi_difference = np.subtract(indi[0], indi[1])  # subtraction of two indices array
+        if np.abs(indi_difference[0]) == 1 or np.abs(indi_difference[1]) == 1:
+            x = np.subtract(after_energy, pre_energy)
+            diff_k = int(np.sum(x)) - 1  # take out the redundant energy
+        else:
+            x = np.subtract(after_energy, pre_energy)
+            diff_k = int(np.sum(x))
+        prob_k = min(1, np.exp(-diff_k/self.temp))  # Metropolis algorithm of probability
+        if prob_k == 1:
+            for i in range(2):
+                array[indi[i][0]][indi[i][1]] = -1 * int(array[indi[i][0]][indi[i][1]])
+        else:
+            if np.random.random() <= prob_k:
+                for i in range(2):
+                    array[indi[i][0]][indi[i][1]] = -1 * int(array[indi[i][0]][indi[i][1]])
+            else:
+                for i in range(2):
+                    array[indi[i][0]][indi[i][1]] = int(array[indi[i][0]][indi[i][1]])
+        print(array)
 
-
-
-
-
-
+    def start_sim(self, model):
+        if model == "glauber":
+            self.glauber()
+        elif model == "kawasaki":  # Corrected typo from "kawaski" to "kawasaki"
+            self.kawasaki()
+        else:
+            print("type 'glauber' or 'kawasaki'")
 
     def stop(self):
         self.stopSim = True  # Stop!
+
+class matplotlib.animation.FuncAnimation(plt.Figure):
+
 
 
 
 
 def main():
-    model = IsingModel(10,1)
+    model = IsingModel(size=5, temp=1, model="glauber")
+    for i in range(10):  # Add a loop for multiple simulation steps
+        model.start_sim(model.model)
+main()
+
 
