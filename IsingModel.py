@@ -1,3 +1,6 @@
+import os
+import time
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -34,14 +37,14 @@ class IsingModel(object):
             self.left[i] = self.arr[int(pt[i][0])][left_coord]
             self.up[i] = self.arr[up_coord][int(pt[i][1])]
             self.down[i] = self.arr[down_coord][int(pt[i][1])]
-        '''coordinates of neighbours : left, right, up, down'''
+    '''coordinates of neighbours : left, right, up, down'''
     def initialize_array(self):
         arr = np.random.choice([-1, 1], size=(self.size, self.size))
         return arr
-
+    '''This is for generating initial random array.'''
     def apply_boundary_condition(self, coord):
         return coord % self.size
-
+    '''This is for boundary condition.'''
     def glauber(self):
         state_right = int(self.right[0][0])
         state_left = int(self.left[0][0])
@@ -62,7 +65,7 @@ class IsingModel(object):
                 self.arr[self.indi[0][0]][self.indi[0][1]] = state_nu  # changed
             else:
                 self.arr[self.indi[0][0]][self.indi[0][1]] = state_mu  # unchanged
-
+    '''It is part of Glauber dynamics'''
     def kawasaki(self):
         pre_energy = np.zeros(shape=(2, 1))
         after_energy = np.zeros(shape=(2, 1))
@@ -93,20 +96,82 @@ class IsingModel(object):
             else:
                 for i in range(2):
                     self.arr[self.indi[i][0]][self.indi[i][1]] = int(self.arr[self.indi[i][0]][self.indi[i][1]])
-    def run(self, iterations):
+    '''It is part of Kawasaki Dynamics.'''
+    def run(self, iterations, printFreq):
         self.stopSim = False
         for i in range(iterations):
             if self.stopSim:
                 break
+            if self.model == "glauber":
+                self.glauber()
+            elif self.model == "kawasaki":
+                self.kawasaki()
             else:
-                if self.model == "glauber":
-                    self.glauber()
-                elif self.model == "kawasaki":
-                    self.kawasaki()
-                else:
-                    break
+                break
+            # Draw and output the lattice configuration every printFreq steps
+            if i % printFreq == 0:
+                print("Iteration {:d}".format(i))
+                self.printout()
 
-
+    '''run the simulation in given amount of zweeps.'''
+    def printout(self):
+        outfile = "output.txt"
+        tmpfile = outfile + ".tmp"
+        # write the array first to temporary file
+        with open(tmpfile, "w") as writer:
+            for i in range(self.size):
+                for j in range(self.size):
+                    writer.write("{:d} {:d} {:d}\n".format(i, j, self.arr[i][j]))
+                    # Add a newline after each row
+                    writer.write("\n")
+        # rename the temporary file to the output file
+        os.rename(tmpfile, outfile)
+    '''take the array data after given zweeps.'''
+    def total_magnetisation(self, states):
+        return np.sum(states)
+    '''This is part of total magnetisation calculations.'''
+    def total_energy(self, states):
+        arr = states  # get array
+        J = -1
+        sums = 0
+        for i in range(self.size):
+            for j in range(self.size):
+                x = int(arr[i][j])
+                right = arr[i][self.apply_boundary_condition(j+1)]
+                left = arr[i][self.apply_boundary_condition(j-1)]
+                up = arr[self.apply_boundary_condition(i-1)][j]
+                down = arr[self.apply_boundary_condition(i+1)][j]
+                neighbours = int(right+left+up+down)
+                sums += J * (x * neighbours)
+        return sums
+    '''This is part of total energy calculations.'''
+    def mean_square(self, value):
+        total_no = self.size * self.size
+        square_M = value**2
+        mean_square_M = square_M/total_no
+        return mean_square_M
+    '''This is part of general mean square calculations.'''
+    def square_mean(self, states):
+        mean_M = np.mean(states)
+        sqr_mean_M = mean_M ** 2
+        return sqr_mean_M
+    '''This is part of general square mean calculations.'''
+    def calculate_susceptibility(self, mean_square_M, square_mean_M):
+        mean_sqr = mean_square_M
+        sqr_mean = square_mean_M
+        N = self.size * self.size
+        m = (mean_sqr - sqr_mean)
+        susceptibility = m / (N * self.temp)
+        return susceptibility
+    '''This is part of susceptibility calculations.'''
+    def scaled_heat_capacity(self, mean_square_E, square_mean_E):
+        mean_sqr = mean_square_E
+        sqr_mean = square_mean_E
+        N = self.size * self.size
+        e = (mean_sqr - sqr_mean)
+        scaled_heat_capacity = e / (N * (self.temp ** 2))
+        return scaled_heat_capacity
+    '''This is part of scaled heat capacity calculations.'''
     def start_sim(self, model):
         if model == "glauber":
             self.glauber()
@@ -114,44 +179,22 @@ class IsingModel(object):
             self.kawasaki()
         else:
             print("type 'glauber' or 'kawasaki'")
-
+    '''This is module for simulator selection.'''
     def stop(self):
         self.stopSim = True  # Stop!
-
-class ising_animation(object):
-    def __init__(self, model, iterations):
-        self.model = model
-        self.iterations = iterations
-        self.fig, self.ax = plt.subplots()
-        self.implot = self.ax.imshow(self.model.arr)  # take array from Ising model
-        self.ani = None  # for storing the animation object
-    def run(self):
-        thread = Thread(target=self.model.run, args=(self.iterations,))
-        # start simulation thread
-        thread.start()
-        # start the animation in the main thread
-        self.ani = animation.FuncAnimation(self.fig, self.animate, interval=10, blit=True)
-        plt.show()
-        self.model.stop()
-    def animate(self, frame):
-        # update the image to show the latest orientation of array
-        self.implot.set_data(self.model.arr)
-        # return
-        return [self.implot]
-
-
-
-
-
+    '''This is for stop the simulator.'''
 
 
 def main():
     size = 10
     temp = 1
     model_type = "glauber"
+    iterations = 100
+    printFreq = 5
     model = IsingModel(size, temp, model_type)
-    anim = ising_animation(model, iterations=100)
-    anim.run()
+    model.run(iterations, printFreq)
+    time.sleep(1)
+
 main()
 
 
