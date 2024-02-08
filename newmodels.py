@@ -143,15 +143,15 @@ def main():
     elif switch == "n":
         print("this is mode for plotting critical temperature.")
         print("size?")
-        size = input()
+        size = int(input())
         print("name of model?")
         name = input()
         temperature = 1.0
-        nsteps = 250000
+        nsteps = 100
 
         model = Ising(size, temperature)
 
-        while temperature <= 3:
+        while temperature <= 3.0:
             for i in range(nsteps):
                 if name == "glauber":
                     energy = 0
@@ -169,6 +169,8 @@ def main():
                 if name == "kawasaki":
                     energy = 0
                     energy_square = 0
+                    magnetization = 0
+                    magnetization_square = 0
                     x1, y1 = model.random_coordinate()
                     x2, y2 = model.random_coordinate()
 
@@ -181,23 +183,24 @@ def main():
                     energy += e1
                     energy_square += e2
 
-            if i % 2500 == 0:
-                average_energy = energy / nsteps
-                print(average_energy)
-                average_energy_square = energy_square / nsteps
+                if i % 25 == 0:
+                    print(temperature)
+                    average_energy = energy / nsteps
 
-                average_abs_magnetization = abs(magnetization) / nsteps
-                print(average_abs_magnetization)
-                average_magnetization = magnetization / nsteps
+                    average_energy_square = energy_square / nsteps
 
-                average_magnetization_square = magnetization_square / nsteps
+                    average_abs_magnetization = abs(magnetization) / nsteps
+
+                    average_magnetization = magnetization / nsteps
+
+                    average_magnetization_square = magnetization_square / nsteps
 
 
-                specific_heat = (average_energy_square - (average_energy ** 2))/(size * temperature ** 2)
-                print(specific_heat)
-                susceptibility = (average_magnetization_square - average_magnetization ** 2)/(size * temperature)
-                print(susceptibility)
-                temperature += 0.1
+                    specific_heat = (average_energy_square - (average_energy ** 2))/(size * temperature ** 2)
+
+                    susceptibility = (average_magnetization_square - average_magnetization ** 2)/(size * temperature)
+
+                    temperature += 0.1
 
 
 
