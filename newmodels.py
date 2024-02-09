@@ -6,11 +6,23 @@ class Ising(object):
     def __init__(self, size, temperature):
         self.temperature = temperature
         self.size = size
-        self.array = self.initialize_array()  # generate instance random array
+        self.array = None
+        self.initialize_array()
 
-    def initialize_array(self):
-        arr = np.random.choice([-1, 1], size=(self.size, self.size))
-        return arr
+    def initialize_array(self, initialize_type="random", final_state=None):
+        if final_state is not None:
+            self.array = final_state  # Use the provided final_state directly
+        else:
+            if initialize_type == "random":
+                self.array = np.random.choice([-1, 1], size=(self.size, self.size))
+            elif initialize_type == "homogeneous":
+                self.array = np.ones((self.size, self.size), dtype=int)
+            elif initialize_type == "half":
+                array1 = np.full((self.size // 2, self.size), 1, dtype=int)
+                array2 = np.full((self.size // 2, self.size), fill_value=-1, dtype=int)
+                self.array = np.vstack((array1, array2))
+            else:
+                print("Invalid initialization type!!")
 
     def random_coordinate(self):
         x = int(np.random.random() * self.size)
@@ -101,7 +113,10 @@ class Ising(object):
                 magnetization += int(self.array[i][j])
         return magnetization, magnetization ** 2
 
-
+def data_generation(filename, data):
+    with open(filename + "_values.txt", "w") as f:
+        for row in data:
+            f.write('\t'.join(map(str, row)) + '\n')
 
 
 def main():
@@ -140,7 +155,9 @@ def main():
                 plt.pause(0.0001)
 
         plt.show()
+
     elif switch == "n":
+
         print("this is mode for plotting critical temperature.")
         print("size?")
         size = int(input())
@@ -148,29 +165,36 @@ def main():
         name = input()
         temperature = 1.0
         nsteps = 100
-
-        model = Ising(size, temperature)
-
+        data = []  # generate empty data array to store later
+        final_state = None
         while temperature <= 3.0:
+            # class called to update the temperature.
+            print(final_state)
+            if name == "glauber":
+                model = Ising(size, temperature)
+                model.initialize_array(initialize_type="homogeneous")
+            elif name == "kawasaki":
+                model = Ising(size, temperature)
+                model.initialize_array(initialize_type="half")
+            else:
+                model = Ising(size, temperature)
             for i in range(nsteps):
+                energy = 0
+                energy_square = 0
+                magnetization = 0
+                magnetization_square = 0
+                # This loop calculate sum of e, e**2, m, m**2 of all states at same temperature.
                 if name == "glauber":
-                    energy = 0
-                    energy_square = 0
-                    magnetization = 0
-                    magnetization_square = 0
                     x, y = model.random_coordinate()
                     model.glauber(y, x)
                     e1, e2 = model.each_state_energy()
+                    m1, m2 = model.each_state_magnetization()
                     energy += e1
                     energy_square += e2
-                    m1, m2 = model.each_state_magnetization()
                     magnetization += m1
                     magnetization_square += m2
-                if name == "kawasaki":
-                    energy = 0
-                    energy_square = 0
-                    magnetization = 0
-                    magnetization_square = 0
+
+                elif name == "kawasaki":
                     x1, y1 = model.random_coordinate()
                     x2, y2 = model.random_coordinate()
 
@@ -178,39 +202,33 @@ def main():
                         x2, y2 = model.random_coordinate()
 
                     model.kawasaki(y1, y2, x1, x2)
-
                     e1, e2 = model.each_state_energy()
                     energy += e1
                     energy_square += e2
 
-                if i % 25 == 0:
-                    print(temperature)
-                    average_energy = energy / nsteps
+                else:
+                    break
+            # divide by nsteps to get average of one temperature increment
+            average_energy = energy / nsteps
+            average_energy_square = energy_square / nsteps
+            average_abs_magnetization = abs(magnetization) / nsteps
+            average_magnetization = magnetization / nsteps
+            average_magnetization_square = magnetization_square / nsteps
 
-                    average_energy_square = energy_square / nsteps
+            specific_heat = (average_energy_square - (average_energy ** 2))/((size**2) * (temperature ** 2))
+            susceptibility = (average_magnetization_square - average_magnetization ** 2)/((size**2) * temperature)
 
-                    average_abs_magnetization = abs(magnetization) / nsteps
-
-                    average_magnetization = magnetization / nsteps
-
-                    average_magnetization_square = magnetization_square / nsteps
-
-
-                    specific_heat = (average_energy_square - (average_energy ** 2))/(size * temperature ** 2)
-
-                    susceptibility = (average_magnetization_square - average_magnetization ** 2)/(size * temperature)
-
-                    temperature += 0.1
-
-
-
-
+            data.append([temperature, average_energy, specific_heat, average_abs_magnetization, susceptibility])
+            final_state = model.array.copy()
+            temperature += 0.1
+        data_generation(name, data)
 
 
     else:
         print("invalid input. Please type y or n.")
 
 main()
+
 
 
 
