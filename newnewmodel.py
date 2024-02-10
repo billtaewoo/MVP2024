@@ -23,7 +23,7 @@ def initialize_array(size, initialize_type = "random", final_state = None):
 def random_coordinate(size):
     x = np.random.randint(size)
     y = np.random.randint(size)
-    return x % size, y % size
+    return x, y
 
 '''glauber dynamics spits out a new array after test'''
 def glauber_dynamics(array, size, temperature, y, x):
@@ -104,7 +104,7 @@ def each_state_energy(array, size):
                         array[(i - 1) % size][j]
                 )
             energy += -1 * J * state * neighbours
-    return energy, energy**2
+    return energy/2, (energy**2)/2  # prevent to double counting
 
 '''magnetization calculated at each states and return magnetization and square magnetization'''
 
@@ -120,6 +120,11 @@ def each_state_magnetization(array, size):
 def data_generation(filename, temperatures, energies, heat_capacities, abs_magnetizations, susceptibilities):
     data = np.column_stack((temperatures, energies, heat_capacities, abs_magnetizations, susceptibilities))
     np.savetxt(filename + "_values.txt", data, delimiter='\t')
+
+def data_generation2(filename, energy_error, heat_capacities_errors, abs_magnetizations_errors, susceptibilities_errors):
+    data = np.column_stack((energy_error, heat_capacities_errors, abs_magnetizations_errors, susceptibilities_errors))
+    np.savetxt(filename + "_values.txt", data, delimiter='\t')
+
 
 
 '''function to return bootstrap error'''
@@ -177,7 +182,7 @@ def main():
         print("name of model?")
         name = str(input())
         temperature = 1.0
-        nsteps = 10000
+        nsteps = 100000
 
         # Data storage!
         temperatures = []
@@ -217,7 +222,7 @@ def main():
                     array = kawasaki_dynamics(array, size, temperature, y1, y2, x1, x2)  # updated array
 
                 # wait to equilibration (100 sweeps)
-                if i >= 1000:
+                if i >= 100:
                     # takes measurement every 10 sweeps
                     if i % 10 == 0:
                         # measurement starts
@@ -225,6 +230,7 @@ def main():
                         m1, m2 = each_state_magnetization(array, size)
                         energy.append(e1)
                         energy2.append(e2)
+
                         magnetization.append(m1)
                         magnetization2.append(m2)
                 else:
@@ -237,7 +243,7 @@ def main():
             # size of N
             N = size ** 2
             # calculating specific heat
-            heat_capacity = (1 / N * (temperature**2)) * (average_energy2 - average_energy**2)
+            heat_capacity = (1 / (N * temperature**2)) * (average_energy2 - average_energy**2)
             # calculating susceptibility
             suscpetibility = (1 / (N * temperature)) * (average_magnetization2 - average_magnetization**2)
             # save values before move on
@@ -251,17 +257,20 @@ def main():
             final_state = array.copy()  # use the final array again in next temperature
             temperature += 0.1  # increase the temperature
         #  calculate the errors
-        energy_error = bootstrap(energies, nsteps)
-        heat_capacities_error = bootstrap(heat_capacities, nsteps)
-        magnetization_error = bootstrap(abs_magnetizations, nsteps)
-        suscpetibility_error = bootstrap(susceptibilities, nsteps)
-        # save errors before move on
-        energy_errors.append(energy_error)
-        heat_capacities_errors.append(heat_capacities_error)
-        abs_magnetizations_errors.append(magnetization_error)
-        susceptibilities_errors.append(suscpetibility_error)
+            energy_error = bootstrap(energies, nsteps)
+            heat_capacities_error = bootstrap(heat_capacities, nsteps)
+            magnetization_error = bootstrap(abs_magnetizations, nsteps)
+            suscpetibility_error = bootstrap(susceptibilities, nsteps)
+            # save errors before move on
+            energy_errors.append(energy_error)
+            heat_capacities_errors.append(heat_capacities_error)
+            abs_magnetizations_errors.append(magnetization_error)
+            susceptibilities_errors.append(suscpetibility_error)
 
         data_generation(name, temperatures, energies, heat_capacities, abs_magnetizations, susceptibilities)
+        data_generation2("error", energy_errors, heat_capacities_errors, abs_magnetizations_errors,
+                         susceptibilities_errors
+                        )
 
     else:
         print("Invalid input. Please type y or n.")
