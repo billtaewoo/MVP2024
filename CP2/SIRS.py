@@ -59,7 +59,7 @@ def SIR(size, array, prob1, prob2, prob3):
     return copy  # return the updated array
 
 '''
-End of the functions
+End of the functions.
 '''
 
 def main():
