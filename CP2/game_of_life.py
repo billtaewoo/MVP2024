@@ -3,6 +3,7 @@ matplotlib.use('TKAgg')
 
 import numpy as np
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 
 
 def generate_array(size):
@@ -57,7 +58,15 @@ def rule(array, size):
                 elif array[y][x] == 0:
                     n_arr[y][x] = 1
     return n_arr
+def center_mass(array):
+    # set origin as (0,0)
+    vector_sum = np.sum(np.argwhere(array), axis=0)
+    vec_length = np.linalg.norm(vector_sum)
+    numbers = np.argwhere(array)[:, 0].size
+    return vec_length/numbers
+
 def main():
+# part for input
     print("random or blinker or glider")
     ini = input()
     print("size")
@@ -65,18 +74,28 @@ def main():
     print("the number of steps")
     nsteps = int(input())
     if ini == 'random':
-        array = generate_array(size)
+        lattice = generate_array(size)
     elif ini == 'blinker':
-        array = oscillators(size)
+        lattice = oscillators(size)
     elif ini == 'glider':
-        array = moving_pattern(size)
+        lattice = moving_pattern(size)
+
+# part for generate animation.
+    for n in tqdm(range(nsteps)):
+        if ini == 'random':
+            lattice = rule(lattice, size)
+        if ini == 'glider':
+            com = center_mass(lattice)
+            f = open('output.txt', 'a')
+            f.write('%d %d\n' %(com, n))
+            f.close()
+            lattice = rule(lattice, size)
 
 
-    for i in range(nsteps):
-        array = rule(array, size)
-        print(array.mean())
+
+
         plt.cla()
-        im = plt.imshow(array, animated=True)
+        im = plt.imshow(lattice, animated=True)
         plt.draw()
         plt.pause(0.0001)
 
