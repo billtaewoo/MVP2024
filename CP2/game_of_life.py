@@ -90,10 +90,6 @@ def main():
             f.write('%d %d\n' %(com, n))
             f.close()
             lattice = rule(lattice, size)
-
-
-
-
         plt.cla()
         im = plt.imshow(lattice, animated=True)
         plt.draw()
