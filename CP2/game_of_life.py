@@ -67,33 +67,65 @@ def center_mass(array):
 
 def main():
 # part for input
-    print("random or blinker or glider")
-    ini = input()
-    print("size")
-    size = int(input())
-    print("the number of steps")
-    nsteps = int(input())
-    if ini == 'random':
-        lattice = generate_array(size)
-    elif ini == 'blinker':
-        lattice = oscillators(size)
-    elif ini == 'glider':
-        lattice = moving_pattern(size)
+    print('animation or simulation')
+    purpose = input()
 
 # part for generate animation.
-    for n in tqdm(range(nsteps)):
+    if purpose == 'animation':
+        print("random or blinker or glider")
+        ini = input()
+        print("size")
+        size = int(input())
+        print("steps")
+        nsteps = int(input())
+
         if ini == 'random':
-            lattice = rule(lattice, size)
-        if ini == 'glider':
-            com = center_mass(lattice)
-            f = open('output.txt', 'a')
-            f.write('%d %d\n' %(com, n))
-            f.close()
-            lattice = rule(lattice, size)
-        plt.cla()
-        im = plt.imshow(lattice, animated=True)
-        plt.draw()
-        plt.pause(0.0001)
+            lattice = generate_array(size)
+        elif ini == 'blinker':
+            lattice = oscillators(size)
+        elif ini == 'glider':
+            lattice = moving_pattern(size)
+
+        for n in range(nsteps):
+            if ini == 'random':
+                lattice = rule(lattice, size)
+            if ini == 'glider':
+                com = center_mass(lattice)
+                f = open('output.dat', 'a')
+                f.write('%d %d\n' %(com, n))
+                f.close()
+                lattice = rule(lattice, size)
+            if ini == 'blinker':
+                lattice = rule(lattice, size)
+
+            plt.cla()
+            im = plt.imshow(lattice, animated=True)
+            plt.draw()
+            plt.pause(0.0001)
+
+                
+    elif purpose == 'simulation':
+        for i in tqdm(range(5000)):
+            size = 50
+            nsteps = 5000
+            avg = 0
+            counter = 0
+            lattice = generate_array(size)
+            for n in range(nsteps):
+                lattice = rule(lattice, size)
+                avg_tmp = int((np.argwhere(lattice==1).shape[0]))
+                if avg_tmp != avg:
+                    avg = avg_tmp
+                elif avg_tmp == avg:
+                    counter += 1
+                    avg = avg_tmp
+                    if counter == 15:
+                        f = open('histogram.dat','a')
+                        f.write('%d \n' %(n))
+                        f.close()
+                        break
+
+       
 
 
 if __name__ == "__main__":
