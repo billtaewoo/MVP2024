@@ -8,9 +8,13 @@ from matplotlib import pyplot as plt
 def main():
     dx = 1
     e0 = 1
+    size = 50
 
-def initialization():
-    return np.
+#  Generating empty lattice with a dot in a middle of 3D lattice
+def initialization(size):
+    lattice = np.zeros(shape=(size,size,size))
+    lattice[size/2][size/2][size/2]= 1
+    return lattice
 #  Calculating 3D Laplacian of general square matrix given
 def Laplacian(lattice):
     return np.roll(lattice, 1,axis=0)+np.roll(lattice, -1,axis=0)+np.roll(lattice, 1,axis=1)+np.roll(lattice, -1,axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)-6*lattice
@@ -24,6 +28,7 @@ def jacobi_Algo(lattice,dx,e0):
 #  Gauss-Seidel
 def Gauss_Algo(lattice,dx,e0):
     
+
 #  Printing line
 if __name__ == "__main__":
     main()
