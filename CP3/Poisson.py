@@ -26,8 +26,11 @@ def jacobi_Algo(lattice,dx,e0):
     lattice += (1/6)*(np.roll(lattice, 1, axis=0)+np.roll(lattice, -1, axis=0)+np.roll(lattice, 1, axis=1)+np.roll(lattice, -1, axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)+((dx**2)*E_charge(lattice,e0)))
     return lattice
 #  Gauss-Seidel
-def Gauss_Algo(lattice,dx,e0):
-    
+def Gauss_Algo(lattice,dx,e0,size):
+    for i in range(size):
+        for j in range(size):
+            for k in range(size):
+                
 
 #  Printing line
 if __name__ == "__main__":
