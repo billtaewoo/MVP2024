@@ -43,13 +43,26 @@ def main():
                 potential.append(new_lattice[i,j,k])
                 distance.append(calc_dist(i,j,k,size))
     #  data writing
-    with open('potential-distance_jacobi.dat', 'w') as f:
-        for pot, dist in zip(distance, potential):
-            f.write(f"{dist}, {pot}\n")
+#    with open('potential-distance_jacobi.dat', 'w') as f:
+#        for pot, dist in zip(distance, potential):
+#            f.write(f"{dist}, {pot}\n")
 
     # 2. ---------------------------------------------
-        
-    
+    #  Generating Electric field lattice
+    EF_lattice = -1 * E_field(new_lattice,dx)
+    data_writer(EF_lattice) # writing out electric field data
+
+    #  empty data space for storing electric field strength and distance
+    e_field = []
+    for i in range(size):
+        for j in range(size):
+            for k in range(size):
+                e_field.append(EF_lattice[i,j,k])
+    #  data writing
+    with open('efield-distance_jacobi.dat', 'w') as f:
+        for dist, ef in zip(distance, e_field):
+            f.write(f"{dist}, {ef}\n")
+
 
 #  Generating electric field with a dot in a middle of 3D lattice
 def E_charge(size):
@@ -66,10 +79,6 @@ def dirichlet(lattice):
     lattice[:, -1, :] = 0
     lattice[:, :, -1] = 0
     return lattice
-
-#  Calculating 3D Laplacian of general square matrix given
-def Laplacian(lattice):
-    return np.roll(lattice, 1,axis=0)+np.roll(lattice, -1,axis=0)+np.roll(lattice, 1,axis=1)+np.roll(lattice, -1,axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)-(6.0*lattice)
 
 #  Jacobi Algorithm
 def jacobi_Algo(lattice,dx,size):
@@ -127,11 +136,11 @@ def convergence_checker(new_lattice, old_lattice, delta):
     return checker
 
 #  data writer
-def dat_wrtiter(lattice):
+def data_writer(lattice):
     with open('lattice.dat', 'a') as f:
         for row in lattice:
-            for value in row:
-                f.write('%f\n' % value)
+            f.write(' '.join(map(str, row)) + '\n')
+
 #  array printer
 def printer(lattice):
     plt.imshow(lattice, cmap='viridis', origin='lower')
