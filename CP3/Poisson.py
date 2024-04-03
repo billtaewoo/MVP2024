@@ -8,12 +8,53 @@ from matplotlib import pyplot as plt
 def main():
     dx = 1
     e0 = 1
-    size = 50
+    delta = 0.001  # tolerance value threshold
+    #please give system size
+    size = int(input())
+    nstep = 100000
+    
+    old_lattice = np.zeros(shape=(size,size,size)) #  set up arbitrary old_lattice
+    new_lattice = np.zeros(shape=(size,size,size)) #  set up arbitrary new_lattice
 
-#  Generating empty lattice with a dot in a middle of 3D lattice
-def point_charge_init(size):
+    for n in range(nstep):
+        #  old_lattice gets lattice from last update
+        old_lattice = np.copy(new_lattice)
+        #  update
+        new_lattice = jacobi_Algo(old_lattice, dx, size)
+        #  checking convergence
+        if convergence_checker(new_lattice, old_lattice, delta):
+            
+            break
+    # ------------------------------------------------
+
+    """ Indexing 
+        1. potential vs distance
+        2. Electric field data
+        3. Visualisation
+    """
+    # 1. ---------------------------------------------
+    #  Empty data space for storing potential and distance for plot later
+    potential = []
+    distance = []
+
+    for i in range(size):
+        for j in range(size):
+            for k in range(size):
+                potential.append(new_lattice[i,j,k])
+                distance.append(calc_dist(i,j,k,size))
+    #  data writing
+    with open('potential-distance_jacobi.dat', 'w') as f:
+        for pot, dist in zip(distance, potential):
+            f.write(f"{dist}, {pot}\n")
+
+    # 2. ---------------------------------------------
+        
+    
+
+#  Generating electric field with a dot in a middle of 3D lattice
+def E_charge(size):
     lattice = np.zeros(shape=(size,size,size))
-    lattice[size/2][size/2][size/2]= 1
+    lattice[size//2,size//2,size//2]= 1
     return lattice
 
 #  Set up the dirichlet boundary condition (3D)
@@ -28,34 +69,79 @@ def dirichlet(lattice):
 
 #  Calculating 3D Laplacian of general square matrix given
 def Laplacian(lattice):
-    return np.roll(lattice, 1,axis=0)+np.roll(lattice, -1,axis=0)+np.roll(lattice, 1,axis=1)+np.roll(lattice, -1,axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)-6*lattice
-
-#  Calculating Field of Electric charge
-def E_charge(lattice,e0):
-    return -1 * e0 * Laplacian(lattice)
+    return np.roll(lattice, 1,axis=0)+np.roll(lattice, -1,axis=0)+np.roll(lattice, 1,axis=1)+np.roll(lattice, -1,axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)-(6.0*lattice)
 
 #  Jacobi Algorithm
-def jacobi_Algo(old_lattice,dx,e0):
-    new_lattice += (1/6)*(np.roll(old_lattice, 1, axis=0)+np.roll(old_lattice, -1, axis=0)+np.roll(old_lattice, 1, axis=1)+np.roll(old_lattice, -1, axis=1)+np.roll(old_lattice, 1, axis=2)+np.roll(old_lattice, -1, axis=2)+((dx**2)*E_charge(old_lattice,e0)))
-    #  import dirchlet boundary condition
-    new_lattice = dirichlet(new_lattice)
-    return new_lattice
+def jacobi_Algo(lattice,dx,size):
+    lattice = (1/6)*(np.roll(lattice, 1, axis=0)+np.roll(lattice, -1, axis=0)+np.roll(lattice, 1, axis=1)+np.roll(lattice, -1, axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)+((dx**2) * E_charge(size)))
+    #  Import dirchlet boundary condition
+    lattice = dirichlet(lattice)
+    return lattice
 
 #  Gauss-Seidel
-def Gauss_Algo(new_lattice,dx,e0):
-    # only gets new lattice!
-    new_lattice += (1/6)*(np.roll(new_lattice, 1, axis=0)+np.roll(new_lattice, -1, axis=0)+np.roll(new_lattice, 1, axis=1)+np.roll(new_lattice, -1, axis=1)+np.roll(new_lattice, 1, axis=2)+np.roll(new_lattice, -1, axis=2)+((dx**2)*E_charge(new_lattice,e0)))
+def Gauss_Algo(new_lattice, dx, size):
+    for i in range(size):
+        for j in range(size):
+            for k in range(size):
+                new_lattice[i,j,k] = 1/6 * (new_lattice[(i-1)%size,j,k] + new_lattice[i,(j-1)%size,k] + new_lattice[i,j,(k-1)%size] + new_lattice[(i+1)%size,j,k] + new_lattice[i,(j+1)%size,k] + new_lattice[i,j,(k+1)%size] + ((dx**2) * E_charge(size)))
     # Import dirchlet boundary condition
     new_lattice = dirichlet(new_lattice)
     return new_lattice
+
+#  Vector plot of the electric field
+def E_field(potential, dx):
+    #  x_axis
+    e_right = np.roll(potential,1,axis=2)
+    e_left = np.roll(potential,-1,axis=2)
+    #  y_axis
+    e_up = np.roll(potential,1,axis=1)
+    e_down = np.roll(potential,-1,axis=1)
+    #  z_axis
+    e_upper =np.roll(potential,1,axis=0)
+    e_lower =np.roll(potential,-1,axis=0)
+    #  discretiation
+    x_disc = (1/(2 * dx)) * (e_right - e_left)
+    y_disc = (1/(2 * dx)) * (e_up - e_down)
+    z_disc = (1/(2 * dx)) * (e_upper - e_lower)
+
+    e_lattice = np.stack((x_disc,y_disc,z_disc), axis=-1)
+
+    return e_lattice
+
+# Distance from center calculator in 3D
+def calc_dist(i,j,k,size):
+    center_coord = size // 2
+    distance = np.sqrt((i - center_coord)**2 + (j - center_coord)**2 + (k - center_coord)**2)
+    return distance
+
+#  Successive over relaxation
+# def SOR(lattice):
 
 #  checking convergence
 def convergence_checker(new_lattice, old_lattice, delta):
     checker = False
     difference = np.sum(abs(new_lattice - old_lattice))
+    #print(difference)
     if (difference <= delta):
         checker = True
     return checker
+
+#  data writer
+def dat_wrtiter(lattice):
+    with open('lattice.dat', 'a') as f:
+        for row in lattice:
+            for value in row:
+                f.write('%f\n' % value)
+#  array printer
+def printer(lattice):
+    plt.imshow(lattice, cmap='viridis', origin='lower')
+    plt.colorbar()  # Add a colorbar to show the color scale
+    plt.title('middle slice of potential')
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.show()
+
+
 
 #  Printing line
 if __name__ == "__main__":
