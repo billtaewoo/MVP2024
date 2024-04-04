@@ -7,15 +7,14 @@ from matplotlib import pyplot as plt
 
 def main():
     dx = 1
-    e0 = 1
-    delta = 0.001  # tolerance value threshold
     #please give system size
-    size = int(input())
+    size = int(input())  # set the system size
+    delta = float(input()) # set accuracy of final solution (0.01 or 0.001)
     nstep = 100000
     
     old_lattice = np.zeros(shape=(size,size,size)) #  set up arbitrary old_lattice
     new_lattice = np.zeros(shape=(size,size,size)) #  set up arbitrary new_lattice
-
+    # section for monopole
     for n in range(nstep):
         #  old_lattice gets lattice from last update
         old_lattice = np.copy(new_lattice)
@@ -25,6 +24,16 @@ def main():
         if convergence_checker(new_lattice, old_lattice, delta):
             
             break
+    # section for wire charge
+    '''for n in range(nstep):
+        # last lattice become new lattice
+        old_lattice = np.copy(new_lattice)
+        # update
+        new_lattice = jacobi_Algo_wire(old_lattice, dx, size)
+        # checking convergence
+        if convergence_checker(new_lattice, old_lattice, delta):
+
+            break'''
     # ------------------------------------------------
 
     """ Indexing 
@@ -37,11 +46,11 @@ def main():
     potential = []
     distance = []
 
-    for i in range(size):
+    '''for i in range(size):
         for j in range(size):
             for k in range(size):
                 potential.append(new_lattice[i,j,k])
-                distance.append(calc_dist(i,j,k,size))
+                distance.append(calc_dist(i,j,k,size))'''
     #  data writing
 #    with open('potential-distance_jacobi.dat', 'w') as f:
 #        for pot, dist in zip(distance, potential):
@@ -50,25 +59,46 @@ def main():
     # 2. ---------------------------------------------
     #  Generating Electric field lattice
     EF_lattice = -1 * E_field(new_lattice,dx)
-    data_writer(EF_lattice) # writing out electric field data
+    #data_writer(EF_lattice) # writing out electric field data
 
     #  empty data space for storing electric field strength and distance
-    e_field = []
+    e_vec_x = [] #  Electric field vector component x
+    e_vec_y = [] #  " component y
+    e_vec_z = [] #  " component z
+    x_coord = [] #  x coordinate
+    y_coord = []
+    z_coord = []
+
     for i in range(size):
         for j in range(size):
             for k in range(size):
-                e_field.append(EF_lattice[i,j,k])
+                e_vec= EF_lattice[i,j,k]
+                e_vec_z.append(e_vec[0])
+                e_vec_y.append(e_vec[1])
+                e_vec_x.append(e_vec[2])
+                z_coord.append(i)
+                y_coord.append(j)
+                x_coord.append(k)
     #  data writing
     with open('efield-distance_jacobi.dat', 'w') as f:
-        for dist, ef in zip(distance, e_field):
-            f.write(f"{dist}, {ef}\n")
-
-
+        for axe, why, zet, xvec, yvec, zvec in zip(x_coord, y_coord, z_coord, e_vec_x, e_vec_y, e_vec_z):
+            f.write(f"{axe}, {why}, {zet}, {xvec}, {yvec}, {zvec}\n")
+# -------------------------------END OF MAIN-----------------------------------------------------------
+# CHARGE TYPES ----------------------------------------------------------------------------------------
 #  Generating electric field with a dot in a middle of 3D lattice
-def E_charge(size):
+def monopole(size):
     lattice = np.zeros(shape=(size,size,size))
     lattice[size//2,size//2,size//2]= 1
     return lattice
+
+#  Generating electric wire in 3D empty space (this is for Magnetic potential calculation)
+def wire_origin(size):
+    lattice = np.zeros(shape=(size,size,size))  # generate the empty cubic space by given size
+    #  wire is align with z axis and running through origin.
+    lattice[:, 0, 0] = 1
+    return lattice
+
+#  BOUNDARY CONDITIONS----------------------------------------------------------------------------------
 
 #  Set up the dirichlet boundary condition (3D)
 def dirichlet(lattice):
@@ -80,23 +110,51 @@ def dirichlet(lattice):
     lattice[:, :, -1] = 0
     return lattice
 
-#  Jacobi Algorithm
+#  ALGORITHMS-------------------------------------------------------------------------------------------
+
+#  Jacobi Algorithm for point charge
 def jacobi_Algo(lattice,dx,size):
-    lattice = (1/6)*(np.roll(lattice, 1, axis=0)+np.roll(lattice, -1, axis=0)+np.roll(lattice, 1, axis=1)+np.roll(lattice, -1, axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)+((dx**2) * E_charge(size)))
+    lattice = (1/6)*(np.roll(lattice, 1, axis=0)+np.roll(lattice, -1, axis=0)+np.roll(lattice, 1, axis=1)+np.roll(lattice, -1, axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)+((dx**2) * monopole(size)))
     #  Import dirchlet boundary condition
     lattice = dirichlet(lattice)
     return lattice
 
-#  Gauss-Seidel
+#  Jacobi Algorithm for wire (MAGNETIC FIELD CALCULATION)
+def jacobi_Algo_wire(lattice,dx,size):
+    lattice = (1/6)*(np.roll(lattice, 1, axis=0)+np.roll(lattice, -1, axis=0)+np.roll(lattice, 1, axis=1)+np.roll(lattice, -1, axis=1)+np.roll(lattice, 1, axis=2)+np.roll(lattice, -1, axis=2)+((dx**2) * wire_origin(size)))
+    #  Import dirchlet boundary condition
+    lattice = dirichlet(lattice)
+    return lattice
+
+#  Gauss-Seidel for point charge
 def Gauss_Algo(new_lattice, dx, size):
     for i in range(size):
         for j in range(size):
             for k in range(size):
-                new_lattice[i,j,k] = 1/6 * (new_lattice[(i-1)%size,j,k] + new_lattice[i,(j-1)%size,k] + new_lattice[i,j,(k-1)%size] + new_lattice[(i+1)%size,j,k] + new_lattice[i,(j+1)%size,k] + new_lattice[i,j,(k+1)%size] + ((dx**2) * E_charge(size)))
+                new_lattice[i,j,k] = 1/6 * (new_lattice[(i-1)%size,j,k] + new_lattice[i,(j-1)%size,k] + new_lattice[i,j,(k-1)%size] + new_lattice[(i+1)%size,j,k] + new_lattice[i,(j+1)%size,k] + new_lattice[i,j,(k+1)%size] + ((dx**2) * monopole(size)))
     # Import dirchlet boundary condition
     new_lattice = dirichlet(new_lattice)
     return new_lattice
 
+#  Gauss-Seidel for wire (MAGNETIC FIELD CALCULATION)
+def Gauss_Algo(new_lattice, dx, size):
+    for i in range(size):
+        for j in range(size):
+            for k in range(size):
+                new_lattice[i,j,k] = 1/6 * (new_lattice[(i-1)%size,j,k] + new_lattice[i,(j-1)%size,k] + new_lattice[i,j,(k-1)%size] + new_lattice[(i+1)%size,j,k] + new_lattice[i,(j+1)%size,k] + new_lattice[i,j,(k+1)%size] + ((dx**2) * wire_origin(size)))
+    # Import dirchlet boundary condition
+    new_lattice = dirichlet(new_lattice)
+    return new_lattice
+
+#  Successive over-relaxation (FOR GAUSS-SEIDEL ALGORITHM)
+def SOR(new_lattice, old_lattice, w):
+    #  Set difference between new lattice and old lattice
+    dp = new_lattice - old_lattice
+    #  Set relaxation parameter must be 1 < w < 2
+    sor_lat = new_lattice + w * dp
+    return sor_lat
+
+# MISCELLANIOUS CALCULATORS -----------------------------------------------------------------------------
 #  Vector plot of the electric field
 def E_field(potential, dx):
     #  x_axis
@@ -123,9 +181,6 @@ def calc_dist(i,j,k,size):
     distance = np.sqrt((i - center_coord)**2 + (j - center_coord)**2 + (k - center_coord)**2)
     return distance
 
-#  Successive over relaxation
-# def SOR(lattice):
-
 #  checking convergence
 def convergence_checker(new_lattice, old_lattice, delta):
     checker = False
@@ -135,6 +190,7 @@ def convergence_checker(new_lattice, old_lattice, delta):
         checker = True
     return checker
 
+# DATA WRITTERS ------------------------------------------------------------------------------
 #  data writer
 def data_writer(lattice):
     with open('lattice.dat', 'a') as f:
@@ -150,7 +206,7 @@ def printer(lattice):
     plt.ylabel('Y-axis')
     plt.show()
 
-
+# END OF FUNCTION LINES -----------------------------------------------------------------------
 
 #  Printing line
 if __name__ == "__main__":
