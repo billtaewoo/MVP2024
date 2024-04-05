@@ -38,7 +38,7 @@ def dat_wrtiter(nstep, free_energy):
     f.close()
 # main
 def main():
-    pinot, a, k, size = map(float, input().split()) # taking variables
+    pinot, a, k, size = map(float, input().split()) # taking variables a=0.1, k=0.1
     size = int(size)
     lattice = initialization(size, pinot)  # initialized the lattice
     fig = plt.figure()
@@ -47,7 +47,7 @@ def main():
 
     plt.colorbar()
     for n in tqdm(range(nsteps)):
-        lattice = Euler(lattice, a, k, size)  # type a, k and size
+        lattice = Euler(lattice, a, k, size)  # type a, k and size 
         if n >= 100:  # wait for equilibration
             if n % 100 == 0: # count every 10 steps
                 dat_wrtiter(n, np.average(freeE(lattice, a, k)))
