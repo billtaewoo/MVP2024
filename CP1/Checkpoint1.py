@@ -2,9 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class Ising:
-    def __init__(self, size, init, temperature):
-        self.size = size  # get the size
+    def __init__(self, size, init, temperature, measurements):
+        self.size = int(size)  # get the size
         self.temp = temperature  # get the temperature of system
+        # measurement is number of mesaurements 
+        # 10 is decorrelation between next measurement
+        # 100 is equilibration steps 
+        self.nsteps = int(measurements * 10 + 100)
         if init == "random":
             self.lattice = np.random.choice([-1, 1], size=(self.size,self.size))  # random lattice
         elif init == "homogeneous":
@@ -15,10 +19,11 @@ class Ising:
             self.lattice[size//2:, :] = -1
             #  half lattice
     
-    def glauber_updater(self, Iteration):
+    def glauber_updater(self):
+        Iteration = int(self.size ** 2)
         # generating list length of iteration of random x and y coordinates
-        x = np.random.randint(0, self.size+1, size = Iteration)
-        y = np.random.randint(0, self.size+1, size = Iteration)
+        x = np.random.randint(0, self.size, size = Iteration)
+        y = np.random.randint(0, self.size, size = Iteration)
         for i in range(Iteration):
             neighbour = (self.lattice[y[i]][(x[i]+1)%self.size] + 
                          self.lattice[y[i]][(x[i]-1)%self.size] + 
@@ -30,12 +35,14 @@ class Ising:
             prob = min(1, np.exp(-1 * eng_diff / self.temp))
             self.lattice[y[i]][x[i]] = np.random.choice([self.lattice[y[i]][x[i]], -1* self.lattice[y[i]][x[i]]], 1, p=[1-prob, prob])
 
-    def kawasaki_updater(self, Iteration):
+    def kawasaki_updater(self):
+        Iteration = int((self.size ** 2)/2) # one sweep is no of iterations for picking entire lattice
+        # kawaski halves Iteration because we are picking two points at once
         # generating list length of iteration of random x and y coordinates (2 coordinates this time)
-        x1 = np.random.randint(0, self.size+1, size = Iteration)
-        y1 = np.random.randint(0, self.size+1, size = Iteration)
-        x2 = np.random.randint(0, self.size+1, size = Iteration)
-        y2 = np.random.randint(0, self.size+1, size = Iteration)
+        x1 = np.random.randint(0, self.size, size = Iteration)
+        y1 = np.random.randint(0, self.size, size = Iteration)
+        x2 = np.random.randint(0, self.size, size = Iteration)
+        y2 = np.random.randint(0, self.size, size = Iteration)
         for i in range(Iteration):
             neighbours1 = (
             self.lattice[y1[i]][(x1[i] + 1) % self.size] +
@@ -112,7 +119,30 @@ class Ising:
             ms[i] = self.mag_sus(sample[i])
         error = np.std(ms)
         return error
+    
+    def glauber_animator(self):
+        fig, ax = plt.subplots()  # generate the figure
+        im = ax.imshow(self.lattice)
+        for i in range(self.nsteps):
+            self.glauber_updater()
+            im.set_array(self.lattice)
+            plt.pause(0.0001)
+        plt.show()
+
+    def kawasaki_animator(self):
+        fig, ax = plt.subplots()  # generate the figure
+        im = ax.imshow(self.lattice)
+        for i in range(self.nsteps):
+            self.kawasaki_updater()
+            im.set_array(self.lattice)
+            plt.pause(0.0001)
+        plt.show()
 
 
-        
+def main():
+    x = Ising(50,"random",2,100)
+    # x.glauber_animator()
+    # x.kawasaki_animator()
+
+main()
 
