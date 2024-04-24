@@ -1,5 +1,9 @@
 import numpy as np
+import random
 import matplotlib.pyplot as plt
+import csv
+import pandas as pd
+from tqdm import tqdm
 
 class Ising:
     def __init__(self, size, init, temperature, measurements):
@@ -26,15 +30,17 @@ class Ising:
         x = np.random.randint(0, self.size, size = Iteration)
         y = np.random.randint(0, self.size, size = Iteration)
         for i in range(Iteration):
-            neighbour = (self.lattice[y[i]][(x[i]+1)%self.size] + 
-                         self.lattice[y[i]][(x[i]-1)%self.size] + 
-                         self.lattice[(y[i]+1)%self.size][x[i]] + 
-                         self.lattice[(y[i]-1)%self.size][x[i]])
-            eng = -1 * self.lattice[y[i]][x[i]] * neighbour
-            eng_new = -1 * -1 * self.lattice[y[i]][x[i]] * neighbour
+            X = x[i]
+            Y = y[i]
+            neighbour = (self.lattice[Y,(X+1)%self.size] + 
+                         self.lattice[Y,(X-1)%self.size] + 
+                         self.lattice[(Y+1)%self.size,X] + 
+                         self.lattice[(Y-1)%self.size,X])
+            eng = -1 * self.lattice[Y,X] * neighbour
+            eng_new = self.lattice[Y,X] * neighbour
             eng_diff = eng_new - eng
             prob = min(1, np.exp(-1 * eng_diff / self.temp))
-            self.lattice[y[i]][x[i]] = np.random.choice([self.lattice[y[i]][x[i]], -1* self.lattice[y[i]][x[i]]], 1, p=[1-prob, prob])
+            self.lattice[Y,X] = random.choices([self.lattice[Y,X], -1* self.lattice[Y,X]], weights=[1-prob, prob], k = 1)[0]
 
     def kawasaki_updater(self):
         Iteration = int((self.size ** 2)/2) # one sweep is no of iterations for picking entire lattice
@@ -45,33 +51,37 @@ class Ising:
         x2 = np.random.randint(0, self.size, size = Iteration)
         y2 = np.random.randint(0, self.size, size = Iteration)
         for i in range(Iteration):
+            X1=x1[i]
+            X2=x2[i]
+            Y1=y1[i]
+            Y2=y2[i]
             neighbours1 = (
-            self.lattice[y1[i]][(x1[i] + 1) % self.size] +
-            self.lattice[y1[i]][(x1[i] - 1) % self.size] +
-            self.lattice[(y1[i] + 1) % self.size][x1[i]] +
-            self.lattice[(y1[i] - 1) % self.size][x1[i]]
+            self.lattice[Y1,(X1 + 1) % self.size] +
+            self.lattice[Y1,(X1 - 1) % self.size] +
+            self.lattice[(Y1 + 1) % self.size,X1] +
+            self.lattice[(Y1 - 1) % self.size,X1]
             )
             neighbours2 = (
-            self.lattice[y2[i]][(x2[i] + 1) % self.size] +
-            self.lattice[y2[i]][(x2[i] - 1) % self.size] +
-            self.lattice[(y2[i] + 1) % self.size][x2[i]] +
-            self.lattice[(y2[i] - 1) % self.size][x2[i]]
+            self.lattice[Y2,(X2 + 1) % self.size] +
+            self.lattice[Y2,(X2 - 1) % self.size] +
+            self.lattice[(Y2 + 1) % self.size,X2] +
+            self.lattice[(Y2 - 1) % self.size,X2]
             )
-            eng_1 = -1 * self.lattice[y1[i]][x1[i]] * neighbours1
-            eng_2 = -1 * self.lattice[y2[i]][x2[i]] * neighbours2
+            eng_1 = -1 * self.lattice[Y1,X1] * neighbours1
+            eng_2 = -1 * self.lattice[Y2,X2] * neighbours2
             eng_old = eng_1 + eng_2 # original energy
-            new_eng_1 = -1 * -1 * self.lattice[y1[i]][x1[i]] * neighbours1
-            new_eng_2 = -1 * -1 * self.lattice[y2[i]][x2[i]] * neighbours2
+            new_eng_1 = self.lattice[Y1,X1] * neighbours1
+            new_eng_2 = self.lattice[Y2,X2] * neighbours2
             eng_new = new_eng_1 + new_eng_2 # new energy
             # condition if two random points are right next to each other
-            if abs(y1[i]-y2[i]) == 1 or abs(x1[i] - x2[i]) == 1:
-                eng_old -= self.lattice[y1[i]][x1[i]] * self.lattice[y2[i]][x2[i]]
-                eng_new -= (-1 * self.lattice[y1[i]][x1[i]]) * (-1 * self.lattice[y2[i]][x2[i]])
+            if abs(Y1-Y2) == 1 or abs(X1 - X2) == 1:
+                eng_old -= self.lattice[Y1,X1] * self.lattice[Y2,X2]
+                eng_new -= (-1 * self.lattice[Y1,X1]) * (-1 * self.lattice[Y2,X2])
             else: pass
             eng_diff = eng_new - eng_old
             prob = min(1, np.exp(-1 * eng_diff / self.temp))
-            self.lattice[y1[i]][x1[i]] = np.random.choice([self.lattice[y1[i]][x1[i]], -1* self.lattice[y1[i]][x1[i]]], 1, p=[1-prob, prob])
-            self.lattice[y2[i]][x2[i]] = np.random.choice([self.lattice[y2[i]][x2[i]], -1* self.lattice[y2[i]][x2[i]]], 1, p=[1-prob, prob])
+            self.lattice[Y1][X1] = random.choices([self.lattice[Y1][X1], -1* self.lattice[Y1][X1]], weights=[1-prob, prob], k=1)[0]
+            self.lattice[Y2][X2] = random.choices([self.lattice[Y2][X2], -1* self.lattice[Y2][X2]], weights=[1-prob, prob], k=1)[0]
     
     def eng_total(self):
         neighbours = (np.roll(self.lattice, 1, axis=0)+
@@ -84,43 +94,32 @@ class Ising:
     
     def magnt_total(self):
         mgnt_total = np.sum(self.lattice)
-        return mgnt_total
+        return abs(mgnt_total)
     
     def heat_cap(self, energy):
-        avg_eng = np.mean(energy)
-        avg_eng2 = np.mean(np.square(energy))
-        dev = avg_eng2 - avg_eng**2
+        dev = np.var(energy)
         heat_cap = (1/(self.size**2 * self.temp**2)) * dev
         return heat_cap
     
     def mag_sus(self, magnt):
-        avg_mgnt = np.mean(magnt)
-        avg_mgnt2 = np.mean(np.sqare(magnt))
-        dev = avg_mgnt2 - avg_mgnt**2
+        dev = np.var(magnt)
         mag_sus = (1/(self.size**2 * self.temp)) * dev
         return mag_sus
 
-    def bootstrap(self, array, nsets= 1000):
+    def bootstrap(self, lists, nsets= 1000):
+        array = np.array(lists)
         setsize = len(array)
-        rand_indices = np.random.randint(0, len(array), size = (setsize, nsets)) # array of random coordinates
+        rand_indices = np.random.randint(0, setsize, size = (setsize, nsets), dtype=int) # array of random coordinates
         sets = array[rand_indices]
         vars = np.var(sets, axis = 0)
         error = np.std(vars, axis= 0)
         return error
     
-    def hc_error(self, sample):
-        hc = np.zeros(len(sample))
-        for i in range(len(sample)):
-            hc[i] = self.heat_cap(sample[i])
-        error = np.std(hc)
-        return error
+    def hc_error(self, error):
+        return error / (self.size**2 * self.temp**2)
     
-    def ms_error(self, sample):
-        ms = np.zeros(len(sample))
-        for i in range(len(sample)):
-            ms[i] = self.mag_sus(sample[i])
-        error = np.std(ms)
-        return error
+    def sus_error(self, error):
+        return error / (self.size**2 * self.temp)
     
     def glauber_animator(self):
         fig, ax = plt.subplots()  # generate the figure
@@ -149,17 +148,95 @@ class Ising:
                 if i % 10 == 0:
                     eng.append(self.eng_total())
                     mgnt.append(self.magnt_total())
-        hc = self.heat_cap(eng)
-        sus = self.mag_sus(mgnt)
-                    
+        hc = self.heat_cap(eng) # heat capacity
+        sus = self.mag_sus(mgnt) # magnetic susceptibilty
+        stdE = self.bootstrap(eng)  # standard deviation of Energy
+        stdM = self.bootstrap(mgnt) # standard deviation of magnetisation
+        hc_err = self.hc_error(stdE) # error of heat capacity
+        sus_err = self.sus_error(stdM) # error of magnetic susceptibility
+        avg_E = np.mean(eng)
+        avg_M = np.mean(mgnt)
+        return avg_E, avg_M, hc, sus, hc_err, sus_err
+    
+    def kawasaki_measure(self):
+        eng = []
+        mgnt = []
+        for i in range(self.nsteps):
+            self.glauber_updater()
+            if i >= 100:
+                if i % 10 == 0:
+                    eng.append(self.eng_total())
+                    mgnt.append(self.magnt_total())
+        hc = self.heat_cap(eng) # heat capacity
+        sus = self.mag_sus(mgnt) # magnetic susceptibilty
+        stdE = self.bootstrap(eng)  # standard deviation of Energy
+        stdM = self.bootstrap(mgnt) # standard deviation of magnetisation
+        hc_err = self.hc_error(stdE) # error of heat capacity
+        sus_err = self.sus_error(stdM) # error of magnetic susceptibility
+        avg_E = np.mean(eng)
+        avg_M = np.mean(mgnt)
+        return avg_E, avg_M, hc, sus, hc_err, sus_err
+    
+    def glauber_generating(self, T_min=1, T_max=3, nsteps=20):
+        # array for datas
+        T = np.linspace(T_min,T_max,nsteps)
+        E = np.zeros(nsteps)
+        M = np.zeros(nsteps)
+        hc = np.zeros(nsteps)
+        sus = np.zeros(nsteps)
+        hc_err = np.zeros(nsteps)
+        sus_err = np.zeros(nsteps)
+        data = {"T":[],"E":[],"M":[],"Hc":[],"Hc_err":[],"Msus":[],"Msus_err":[]} # dictionary value for save
+        for i in tqdm(range(nsteps)):
+            self.temp = T[i]
+            E[i], M[i], hc[i], sus[i], hc_err[i], sus_err[i] = self.glauber_measure()
+        # save to dictionary
+        for j in range(nsteps):
+            data["T"].append(T[j])
+            data["E"].append(E[j])
+            data["M"].append(M[j])
+            data["Hc"].append(hc[j])
+            data["Hc_err"].append(hc_err[j])
+            data["Msus"].append(sus[j])
+            data["Msus_err"].append(sus_err[j])
+        # Save dictionary data to a CSV file using pandas
+        df = pd.DataFrame(data)
+        df.to_csv("glauber.csv", index=True)
+        print(f"Data saved successfully!")
 
-
-
+    def kawasaki_generating(self, T_min=1, T_max=3, nsteps=20):
+        # array for datas
+        T = np.linspace(T_min,T_max,nsteps)
+        E = np.zeros(nsteps)
+        M = np.zeros(nsteps)
+        hc = np.zeros(nsteps)
+        sus = np.zeros(nsteps)
+        hc_err = np.zeros(nsteps)
+        sus_err = np.zeros(nsteps)
+        data = {"T":[],"E":[],"M":[],"Hc":[],"Hc_err":[],"Msus":[],"Msus_err":[]} # dictionary value for save
+        for i in tqdm(range(nsteps)):
+            self.temp = T[i]
+            E[i], M[i], hc[i], sus[i], hc_err[i], sus_err[i] = self.kawasaki_measure()
+        # save to dictionary
+        for j in range(nsteps):
+            data["T"].append(T[j])
+            data["E"].append(E[j])
+            data["M"].append(M[j])
+            data["Hc"].append(hc[j])
+            data["Hc_err"].append(hc_err[j])
+            data["Msus"].append(sus[j])
+            data["Msus_err"].append(sus_err[j])
+        # Save dictionary data to a CSV file using pandas
+        df = pd.DataFrame(data)
+        df.to_csv("kawasaki.csv", index=True)
+        print(f"Data saved successfully!")
 
 def main():
-    x = Ising(50,"random",2,100)
+    x = Ising(50,"half",2.5,100)
     # x.glauber_animator()
-    # x.kawasaki_animator()
+    x.kawasaki_animator()
+    # x.glauber_generating()
+    # x.kawasaki_generating()
 
 main()
 
