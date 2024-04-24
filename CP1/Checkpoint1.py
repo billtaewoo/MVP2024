@@ -9,6 +9,7 @@ class Ising:
         # 10 is decorrelation between next measurement
         # 100 is equilibration steps 
         self.nsteps = int(measurements * 10 + 100)
+        self.measurements = measurements
         if init == "random":
             self.lattice = np.random.choice([-1, 1], size=(self.size,self.size))  # random lattice
         elif init == "homogeneous":
@@ -99,12 +100,13 @@ class Ising:
         mag_sus = (1/(self.size**2 * self.temp)) * dev
         return mag_sus
 
-    def bootstrap(self, sweeps):
-        sample = np.zeros((len(sweeps),100))
-        x = np.random.randint(0, len(sweeps), size = (len(sweeps),100))
-        for i in range(100):
-            sample[i] = sweeps[x[:,i]]
-        return sample
+    def bootstrap(self, array, nsets= 1000):
+        setsize = len(array)
+        rand_indices = np.random.randint(0, len(array), size = (setsize, nsets)) # array of random coordinates
+        sets = array[rand_indices]
+        vars = np.var(sets, axis = 0)
+        error = np.std(vars, axis= 0)
+        return error
     
     def hc_error(self, sample):
         hc = np.zeros(len(sample))
@@ -137,6 +139,21 @@ class Ising:
             im.set_array(self.lattice)
             plt.pause(0.0001)
         plt.show()
+
+    def glauber_measure(self):
+        eng = []
+        mgnt = []
+        for i in range(self.nsteps):
+            self.glauber_updater()
+            if i >= 100:
+                if i % 10 == 0:
+                    eng.append(self.eng_total())
+                    mgnt.append(self.magnt_total())
+        hc = self.heat_cap(eng)
+        sus = self.mag_sus(mgnt)
+                    
+
+
 
 
 def main():
