@@ -68,6 +68,10 @@ class SIRS:
             plt.pause(0.0001)
         plt.show()
 
+    def cal_Inum(self):
+        I_num = np.count_nonzero(np.lattice == 1)
+        return I_num
+
     def bootstrap(self, lists, nsets= 1000):
         array = np.array(lists)
         setsize = len(array)
