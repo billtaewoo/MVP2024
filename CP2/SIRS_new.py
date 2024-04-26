@@ -69,7 +69,7 @@ class SIRS:
         plt.show()
 
     def cal_Inum(self):
-        I_num = np.count_nonzero(np.lattice == 1)
+        I_num = np.count_nonzero(self.lattice == 1)
         return I_num
 
     def bootstrap(self, lists, nsets= 1000):
