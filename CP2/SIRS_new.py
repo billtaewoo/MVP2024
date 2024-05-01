@@ -80,10 +80,48 @@ class SIRS:
         vars = np.var(sets, axis = 0)
         error = np.std(vars, axis= 0)
         return error
+    
+    def heatmap_plot(self):
+        # list_p1 = np.arange(0, 1.05, 0.05)
+        list_p1 = np.arange(0, 1.2, 0.2)
+        self.p2 = 0.5
+        # list_p3 = np.arange(0, 1.05, 0.05)
+        list_p3 = np.arange(0, 1.2, 0.2)
+        data={"p1":[],"p3":[],"average rate I":[]}
+
+        for i in tqdm(range(len(list_p1))):
+            self.p1 = list_p1[i]
+            for j in range(len(list_p3)):
+                self.p3 = list_p3[j]
+                totalI = 0
+                for n in range(self.nsteps):
+                    self.updates()
+                    if n >= 100:
+                        if n % 10 == 0:
+                            I = int(self.cal_Inum())
+                            # totalI.append(I)
+                            totalI += I
+                avg_I = totalI/self.measurements
+                avg_rate_I = avg_I/(self.size**2)
+                #save data
+                data["p1"].append(list_p1[i])
+                data["p3"].append(list_p3[j])
+                data["average rate I"].append(avg_rate_I)
+        # save the data out
+        df = pd.DataFrame(data)
+        df.to_csv("Heatmap.csv",index=True)
+        print(f"Data saved successfully!")
+        # plot the heat map
+        reshape_size = (len(list_p1),len(list_p3))
+        plt.imshow(np.array(data["average rate I"]).reshape(reshape_size))
+        plt.show()
+
+
 
 def main():
     x = SIRS(50,100,0.6,0.5,0.1)
 
-    x.animate()
+    # x.animate()
+    x.heatmap_plot()
 
 main()
