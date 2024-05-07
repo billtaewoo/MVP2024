@@ -121,7 +121,7 @@ class SIRS:
 def main():
     x = SIRS(50,100,0.6,0.5,0.1)
 
-    # x.animate()
-    x.heatmap_plot()
+    x.animate()
+    # x.heatmap_plot()
 
 main()

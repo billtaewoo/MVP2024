@@ -114,8 +114,8 @@ class GameofLife:
 
 
 def main():
-    x= GameofLife(50,"gliders", 1000)
-    # x.animate()
+    x= GameofLife(50,"random", 1000)
+    x.animate()
     # x.histogram()
-    x.Com_Calc()
+    # x.Com_Calc()
 main()
